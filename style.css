@@ -1,0 +1,47 @@
+body {
+    font-family: sans-serif;
+    background-color: #f9f5e9;
+    padding: 20px;
+    text-align: center;
+}
+
+h1 {
+    font-size: 1.8em;
+    margin-bottom: 30px;
+}
+
+#tsundoku-area .stack {
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 30px;
+}
+
+.book {
+    width: 120px;
+    height: 30px;
+    background-color: #c76d6d;
+    color: white;
+    font-weight: bold;
+    line-height: 30px;
+    border-radius: 4px;
+    box-shadow: 2px 2px 4px #999;
+}
+
+#bookshelf-area .bookshelf {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 30px;
+}
+
+#add-book {
+    padding: 10px 20px;
+    font-size: 1em;
+    border: none;
+    background-color: #5b9bd5;
+    color: white;
+    border-radius: 6px;
+    cursor: pointer;
+}
