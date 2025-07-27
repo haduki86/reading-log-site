@@ -1,11 +1,32 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>読書記録サイト</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>読書の家</title>
 </head>
 <body>
-  <h1>ようこそ！</h1>
-  <p>これはあなたの初めてのWebサイトです。</p>
+    <header>
+        <h1>読書の家</h1>
+    </header>
+    
+    <main>
+        <!--読了本が並ぶ本棚-->
+        <section id="bookshelf"></section>
+            <h2>本棚（読了本）</h2>
+        </section>
+
+        <!--積読本が積まれる椅子エリア-->
+        <section id="reading-chair">
+            <h2>椅子の上（積読本）</h2>
+            <div id="completed-books"></div>
+        </section>
+
+        <!--操作ボタン-->
+        <section id="contorols">
+            <button id="add-book-btn">本を追加</button>
+            <button id="mark-complete-btn">読了した</button>
+        </section>
+    </main>
 </body>
 </html>
