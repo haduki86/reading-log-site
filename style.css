@@ -2,11 +2,11 @@ body{
     margin: 0;
     padding: 0;
     background-color: #f0e9e0;
-    font-family: "sarif";
+    font-family: serif;
 }
 
 /* 本棚スタイル */
-#bookshelf{
+#bookshelf {
     position: fixed;
     right: 0;
     top: 0;
@@ -19,4 +19,28 @@ body{
     overflow-y: auto;
 }
 
-/*椅子のスタイル*/
+/* 椅子のスタイル */
+#chair {
+    width: 120px; /* 画像サイズに合わせて調整 */
+    height: 120px; /* 画像サイズに合わせて調整 */
+    background-image: url("./images/image_chair.png");
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+/* 本のスタイル */
+.book {
+    width: 100px;
+    height: 20px;
+    background-color: #b44;
+    margin: 2px auto;
+    border: 2px solid #800;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.book:hover {
+    transform: scale(1.05);
+}

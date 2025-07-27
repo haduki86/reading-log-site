@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html lang="ja"></html>
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
     <title>読書の家</title>
 </head>
 <body>
@@ -12,18 +13,20 @@
     
     <main>
         <!--読了本が並ぶ本棚-->
-        <section id="bookshelf"></section>
+        <section id="bookshelf">
             <h2>本棚（読了本）</h2>
+            <!-- TODO: ここに読了本のリストや説明を表示する予定 -->
         </section>
 
         <!--積読本が積まれる椅子エリア-->
         <section id="reading-chair">
-            <h2>椅子の上（積読本）</h2>
-            <div id="completed-books"></div>
+            <!-- JavaScriptで積読本を動的に追加するエリア -->
+            <div id="stacked-books"></div>
+            <div id="stacked-books"></div>
         </section>
 
         <!--操作ボタン-->
-        <section id="contorols">
+        <section id="controls">
             <button id="add-book-btn">本を追加</button>
             <button id="mark-complete-btn">読了した</button>
         </section>
