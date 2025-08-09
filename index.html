@@ -4,147 +4,21 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>読書サイト</title>
-<style>
-    body {
-        margin: 0;
-        font-family: "Noto Serif JP", serif;
-        background-color: #fdfaf4;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 20px;
-    }
-
-    .bookshelf {
-        width: 700px;
-        height: 600px;
-        background: #fff;
-        border: 3px solid #555;
-        position: relative;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        background-image: repeating-linear-gradient(
-            to bottom,
-            transparent 0,
-            transparent 124px,
-            #555 127px
-        );
-    }
-
-    .shelf {
-        display: flex;
-        align-items: flex-end;
-        padding: 5px 1px;
-        height: 120px;
-        overflow-x: auto;
-    }
-
-    .book {
-        /* 固定サイズ除去（個別に inline 指定） */
-        margin: 0 1px;
-        background: #fff;
-        border: 1.5px solid #555;
-        cursor: pointer;
-        transition: transform 0.2s;
-    }
-
-    .book:hover {
-        transform: scale(1.1);
-    }
-
-    .chair {
-        position: absolute;
-        bottom: -32px;
-        left: 15px;
-        transform: none;
-        width: 130px;
-        height: 18px;
-        border: 2px solid #555;
-        background: #fff;
-    }
-
-    /* 変更後: 積読スタック（上から下へ） */
-    .stacked-books {
-        position: absolute;
-        bottom: -10px;
-        left: 25px;
-        transform: none;
-        display: flex;
-        flex-direction: column; /* 上から下へ積む */
-        align-items: center;
-    }
-
-    .book-horizontal {
-        /* 固定サイズ除去（個別に inline 指定） */
-        margin: 1px 0;
-        background: #fff;
-        border: 1px solid #555;
-        cursor: pointer;
-        transform: translateY(-40px);
-        opacity: 0;
-        animation: stackDown 0.4s forwards;
-    }
-
-    .stacked-books {
-        /* 幅が違っても左揃え */
-        align-items: flex-start;
-    }
-
-    @keyframes stackDown {
-        to {
-            transform: translateY(0);
-            opacity: 1;
-        }
-    }
-
-    .modal {
-        display: none;
-        position: fixed;
-        top: 0; left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.6);
-        justify-content: center;
-        align-items: center;
-    }
-
-    .modal-content {
-        background: #fffdf5;
-        padding: 20px;
-        border-radius: 8px;
-        width: 300px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    }
-
-    .close-btn {
-        float: right;
-        cursor: pointer;
-        font-size: 18px;
-    }
-
-    form {
-        margin: 15px 0;
-        display: flex;
-        gap: 5px;
-    }
-    form input {
-        padding: 5px;
-    }
-    form button {
-        padding: 5px 10px;
-    }
-</style>
+<link rel="stylesheet" href="styles.css">
+<script src="script.js" defer></script>
 </head>
 <body>
 
 <form id="bookForm">
     <input type="text" id="title" placeholder="本のタイトル" required>
-    <button type="submit">積読する</button>
+    <button type="submit">積読</button>
 </form>
 
 <div class="bookshelf" id="bookshelf">
     <div class="shelf" id="readShelf"></div>
+    <div class="shelf" id="readShelf2"></div>
+    <div class="shelf" id="readShelf3"></div>
+    <div class="shelf" id="readShelf4"></div>
     <div class="chair"></div>
     <div class="stacked-books" id="stackedBooks"></div>
 </div>
@@ -153,198 +27,15 @@
     <div class="modal-content">
         <span class="close-btn" id="closeModal">&times;</span>
         <h2 id="modalTitle"></h2>
-        <textarea id="modalMemo" placeholder="感想を記録..." style="width:100%;height:100px;"></textarea>
-        <button id="markRead">読了にする</button>
+    <label style="display:block;font-size:12px;margin-top:4px;">感想</label>
+    <textarea id="modalMemo" placeholder="感想を記録..." style="width:100%;height:100px;"></textarea>
+    <label style="display:block;font-size:12px;margin-top:8px;">表紙色</label>
+    <div id="coverColorChoices" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
+            <button id="markRead">読了</button>
+            <button id="deleteBook" style="background:#fdd;">削除</button>
+        </div>
     </div>
 </div>
-
-<script>
-    let books = JSON.parse(localStorage.getItem("books")) || [];
-
-    const stackedBooksEl = document.getElementById("stackedBooks");
-    const readShelfEl = document.getElementById("readShelf");
-    const bookForm = document.getElementById("bookForm");
-
-    const modal = document.getElementById("modal");
-    const modalTitle = document.getElementById("modalTitle");
-    const modalMemo = document.getElementById("modalMemo");
-    const closeModal = document.getElementById("closeModal");
-    const markReadBtn = document.getElementById("markRead");
-
-    let currentBookId = null;
-
-    function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
-
-    function ensureSizes(book) {
-        let updated = false;
-        if (book.shelfWidth == null) { book.shelfWidth = randInt(12,28); updated = true; }
-        if (book.shelfHeight == null) { book.shelfHeight = randInt(70,110); updated = true; }
-        if (book.stackWidth == null) { book.stackWidth = randInt(85,130); updated = true; }
-        if (book.stackThickness == null) { book.stackThickness = randInt(12,22); updated = true; }
-        return updated;
-    }
-
-    // 起動時に既存分へサイズ付与
-    (function migrateSizes(){
-        let changed = false;
-        books.forEach(b => { if (ensureSizes(b)) changed = true; });
-        if (changed) localStorage.setItem("books", JSON.stringify(books));
-    })();
-
-    function createTsundokuElement(book, animate = true, delay = 0) {
-        ensureSizes(book);
-        const bookEl = document.createElement("div");
-        bookEl.title = book.title;
-        bookEl.classList.add("book-horizontal");
-        bookEl.dataset.id = book.id;
-        bookEl.style.width = book.stackWidth + "px";
-        bookEl.style.height = book.stackThickness + "px";
-        if (animate) {
-            bookEl.style.animationDelay = `${delay}s`;
-        } else {
-            bookEl.style.animation = "none";
-            bookEl.style.opacity = "1";
-            bookEl.style.transform = "translateY(0)";
-        }
-        bookEl.addEventListener("click", () => openModal(book.id));
-        return bookEl;
-    }
-
-    function createReadElement(book) {
-        ensureSizes(book);
-        const bookEl = document.createElement("div");
-        bookEl.title = book.title;
-        bookEl.classList.add("book");
-        bookEl.dataset.id = book.id;
-        bookEl.style.width = book.shelfWidth + "px";
-        bookEl.style.height = book.shelfHeight + "px";
-        bookEl.addEventListener("click", () => openModal(book.id));
-        return bookEl;
-    }
-
-    function initialRender() {
-        stackedBooksEl.innerHTML = "";
-        readShelfEl.innerHTML = "";
-        const tsundoku = books.filter(b=>b.status==="積読");
-        tsundoku.forEach((book, idx) => {
-            stackedBooksEl.appendChild(createTsundokuElement(book, true, idx*0.08));
-        });
-        books.filter(b=>b.status==="読了").forEach(b=>{
-            readShelfEl.appendChild(createReadElement(b));
-        });
-    }
-
-    bookForm.addEventListener("submit", e => {
-        e.preventDefault();
-        const title = document.getElementById("title").value.trim();
-        if (!title) return;
-        const newBook = {
-            id: `${Date.now()}-${Math.random().toString(36).substr(2,9)}`,
-            title,
-            memo: "",
-            status: "積読"
-        };
-        ensureSizes(newBook);
-        books.push(newBook);
-        localStorage.setItem("books", JSON.stringify(books));
-        addSingleTsundoku(newBook);
-        bookForm.reset();
-    });
-
-    function addSingleTsundoku(book) {
-        const el = createTsundokuElement(book, true, 0);
-        stackedBooksEl.firstChild
-            ? stackedBooksEl.insertBefore(el, stackedBooksEl.firstChild)
-            : stackedBooksEl.appendChild(el);
-    }
-
-    function moveToRead(book) {
-        const target = stackedBooksEl.querySelector(`[data-id="${book.id}"]`);
-        if (target) target.remove();
-        readShelfEl.appendChild(createReadElement(book));
-    }
-
-    function renderBooks() {
-        stackedBooksEl.innerHTML = "";
-        readShelfEl.innerHTML = "";
-
-        // 積読: 新しいものを上に
-        const tsundoku = books
-            .filter(b => b.status === "積読")
-            .sort((a,b) => b.id - a.id); // id降順
-
-        tsundoku.forEach((book, idx) => {
-            const bookEl = document.createElement("div");
-            bookEl.title = book.title;
-            bookEl.classList.add("book-horizontal");
-            bookEl.addEventListener("click", () => openModal(book.id));
-            bookEl.style.animationDelay = `${idx * 0.1}s`;
-            stackedBooksEl.appendChild(bookEl);
-        });
-
-        // 読了
-        const read = books.filter(b => b.status === "読了");
-        read.forEach(book => {
-            const bookEl = document.createElement("div");
-            bookEl.title = book.title;
-            bookEl.classList.add("book");
-            bookEl.addEventListener("click", () => openModal(book.id));
-            readShelfEl.appendChild(bookEl);
-        });
-    }
-
-    function openModal(id) {
-        const book = books.find(b => b.id === id);
-        if (!book) return;
-        currentBookId = id;
-        modalTitle.textContent = book.title;
-        modalMemo.value = book.memo || "";
-        modal.style.display = "flex";
-    }
-
-    function closeModalFunc() {
-        modal.style.display = "none";
-    }
-
-    bookForm.addEventListener("submit", e => {
-        e.preventDefault();
-        const title = document.getElementById("title").value.trim();
-        if (!title) return;
-
-        const newBook = {
-            id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            title,
-            memo: "",
-            status: "積読"
-        };
-        books.push(newBook);
-        localStorage.setItem("books", JSON.stringify(books));
-        addSingleTsundoku(newBook); // 全再描画しない
-        bookForm.reset();
-    });
-
-    markReadBtn.addEventListener("click", () => {
-        const book = books.find(b => b.id === currentBookId);
-        if (!book) return;
-        book.memo = modalMemo.value;
-        book.status = "読了";
-        localStorage.setItem("books", JSON.stringify(books));
-        moveToRead(book); // 個別移動
-        closeModalFunc();
-    });
-
-    closeModal.addEventListener("click", closeModalFunc);
-    window.addEventListener("click", e => {
-        if (e.target === modal) closeModalFunc();
-    });
-
-    // Prevent modal from closing when clicking inside modal-content
-    document.querySelector('.modal-content').addEventListener('click', function(e) {
-        e.stopPropagation();
-    });
-
-    initialRender();
-</script>
-
 </body>
 </html>
