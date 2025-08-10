@@ -9,7 +9,6 @@ const bookForm = document.getElementById("bookForm");
 const modal = document.getElementById("modal");
 const modalTitle = document.getElementById("modalTitle");
 const modalMemo = document.getElementById("modalMemo");
-const closeModal = document.getElementById("closeModal");
 const markReadBtn = document.getElementById("markRead");
 const deleteBookBtn = document.getElementById("deleteBook");
 
@@ -285,7 +284,7 @@ window.addEventListener("keydown", (e) => {
     }
 });
 
-closeModal.addEventListener("click", closeModalFunc);
+(document.getElementById("closeModal")).addEventListener("click", closeModalFunc);
 window.addEventListener("click", e => {
     if (e.target === modal) closeModalFunc();
 });
