@@ -51,7 +51,7 @@ body {
     .shelf {
         display: flex;
         align-items: flex-end;
-        padding: 1.5px 4px;
+        padding: 2px 4px;
         height: 158px; /* 122 -> 158 */
         overflow-x: auto;
         gap: 2px;
@@ -73,34 +73,11 @@ body {
         transform: scale(1.1);
     }
 
-    /* ホバー時のふわっとツールチップ */
-    .book-tooltip {
-        position: absolute;
-        left: 50%;
-        top: -10px;
-        transform: translate(-50%, -100%) scale(.92);
-        background: rgba(255,255,240,0.98);
-        color: #222;
-        border: 1px solid #444;
-        padding: 4px 8px;
-        border-radius: 6px;
-        font-size: 12px;
-        line-height: 1.2;
-        max-width: 160px;
-        box-shadow: 0 4px 10px -2px rgba(0,0,0,.25);
-        pointer-events: none;
-        opacity: 0;
-        white-space: normal;
-        text-align: center;
-        transition: opacity .25s ease, transform .25s ease;
-        z-index: 20;
-    }
-    .book:hover .book-tooltip,
-    .book-horizontal:hover .book-tooltip {
-        opacity: 1;
-        transform: translate(-50%, -100%) scale(1);
-    }
+    /* ツールチップ削除対応: 位置指定残し不要 */
     .book-horizontal { position: relative; }
+
+    /* ドロップ領域ハイライト */
+    .drop-target-highlight { outline:2px dashed #ffb347; outline-offset:2px; }
 
     /* 読了移動アニメーション */
     .fly-to-shelf {

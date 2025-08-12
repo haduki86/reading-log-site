@@ -4,13 +4,14 @@ const stackedBooksEl = document.getElementById("stackedBooks");
 const readShelfEl = document.getElementById("readShelf");
 const readShelf2El = document.getElementById("readShelf2");
 const readShelf3El = document.getElementById("readShelf3");
+const readShelf4El = document.getElementById("readShelf4");
 const bookForm = document.getElementById("bookForm");
 
 const modal = document.getElementById("modal");
 const modalTitle = document.getElementById("modalTitle");
 const modalTitleText = document.getElementById("modalTitleText");
 const modalMemo = document.getElementById("modalMemo");
-const markReadBtn = document.getElementById("markRead");
+// 読了ボタン撤去に伴い参照しない
 const deleteBookBtn = document.getElementById("deleteBook");
 const insertDateBtn = document.getElementById('insertDateBtn');
 
@@ -113,7 +114,7 @@ function createTsundokuElement(book, animate = true, delay = 0) {
     adjustFontSize(span, bookEl, false);
     bookEl.appendChild(span);
     // ツールチップ
-    bookEl.appendChild(makeTooltip(book.title));
+    // ツールチップ廃止
     if (animate) {
         bookEl.style.animationDelay = `${delay}s`;
     } else {
@@ -141,7 +142,7 @@ function createReadElement(book) {
     span.textContent = truncateTitle(book.title, Math.floor(book.shelfHeight / 12));
     adjustFontSize(span, bookEl, true);
     bookEl.appendChild(span);
-    bookEl.appendChild(makeTooltip(book.title));
+    // ツールチップ廃止
     bookEl.addEventListener("click", () => openModal(book.id));
     return bookEl;
 }
@@ -214,12 +215,7 @@ function openModal(id) {
     }
     highlightSelectedColor(book.color || '#ffffff');
     modal.style.display = "flex";
-    // 読了済みなら読了ボタン非表示
-    if (book.status === "読了") {
-        markReadBtn.style.display = "none";
-    } else {
-        markReadBtn.style.display = "inline-block";
-    }
+    // 読了ボタン廃止
 }
 
 function closeModalFunc() {
@@ -251,9 +247,7 @@ bookForm.addEventListener("submit", e => {
     bookForm.reset();
 });
 
-markReadBtn.addEventListener("click", () => {
-    markCurrentBookRead();
-});
+// 読了ボタン削除
 
 deleteBookBtn.addEventListener("click", () => {
     const idx = books.findIndex(b => b.id === currentBookId);
@@ -275,27 +269,13 @@ deleteBookBtn.addEventListener("click", () => {
 modalMemo.addEventListener("input", debounceSaveMemo);
 
 // 現在の本を読了にする共通関数
-function markCurrentBookRead() {
-    if (!currentBookId) return;
-    const book = books.find(b => b.id === currentBookId);
-    if (!book) return;
-    if (book.status === "読了") { // 既に読了なら閉じるだけ
-        closeModalFunc();
-        return;
-    }
-    // 入力中のメモを即保存
-    if (memoSaveTimer) clearTimeout(memoSaveTimer);
-    book.memo = modalMemo.value;
-    book.status = "読了";
-    localStorage.setItem("books", JSON.stringify(books));
-    moveToRead(book);
-    closeModalFunc();
-}
+// 読了化関数はドラッグ経由の toggleBookStatus を利用
 
 // Escapeキーで読了（または既読なら閉じる）
 window.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && modal.style.display === "flex") {
-        markCurrentBookRead();
+        // 閉じるのみ
+        closeModalFunc();
     }
 });
 
@@ -310,6 +290,8 @@ document.querySelector('.modal-content').addEventListener('click', function(e) {
 });
 
 initialRender();
+// 領域間ドラッグセットアップ
+setupCrossAreaDrag();
 
 // タイトルを適度に省略
 function truncateTitle(str, max) {
@@ -333,9 +315,12 @@ function enableBookDrag(container){
     container.addEventListener('dragover', e => e.preventDefault());
 }
 let dragSrcId = null;
+let dragSrcType = null; // 'read' | 'stack'
 function onDragStart(e){
     dragSrcId = e.currentTarget.dataset.id;
+    dragSrcType = 'read';
     e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', dragSrcId); } catch(_) {}
     e.currentTarget.classList.add('dragging');
 }
 function onDragOver(e){
@@ -359,6 +344,7 @@ function onDrop(e){
     books = [...others, ...readBooks];
     localStorage.setItem('books', JSON.stringify(books));
     dragSrcId = null;
+    dragSrcType = null;
     document.querySelectorAll('.dragging').forEach(el=>el.classList.remove('dragging'));
 }
 
@@ -366,6 +352,7 @@ function onDragEnd(){
     // ドロップされなかった場合でも透過解除
     document.querySelectorAll('.dragging').forEach(el=>el.classList.remove('dragging'));
     dragSrcId = null;
+    dragSrcType = null;
 }
 
 // 仕切りドラッグ/追加関連削除
@@ -463,15 +450,21 @@ function highlightSelectedColor(col) {
 // 読了本配置（上段満杯なら下段へ）
 function placeReadBook(book){
     const el = createReadElement(book);
-    const shelves = [readShelfEl, readShelf2El, readShelf3El].filter(Boolean);
-    for (let i=0;i<shelves.length;i++) {
-        const shelf = shelves[i];
-        const maxWidth = shelf.clientWidth - 10;
-        let used = 0;
-        [...shelf.querySelectorAll('.book')].forEach(bEl => used += bEl.offsetWidth + 2);
-        if (used + book.shelfWidth + 4 <= maxWidth || i === shelves.length-1) {
-            shelf.appendChild(el);
-            break;
+    const shelves = [readShelfEl, readShelf2El, readShelf3El, readShelf4El].filter(Boolean);
+    if (typeof book.shelfLevel === 'number' && shelves[book.shelfLevel]) {
+        shelves[book.shelfLevel].appendChild(el);
+    } else {
+        // 空きスペース探索
+        for (let i=0;i<shelves.length;i++) {
+            const shelf = shelves[i];
+            const maxWidth = shelf.clientWidth - 10;
+            let used = 0;
+            [...shelf.querySelectorAll('.book')].forEach(bEl => used += bEl.offsetWidth + 2);
+            if (used + book.shelfWidth + 4 <= maxWidth || i === shelves.length-1) {
+                shelf.appendChild(el);
+                book.shelfLevel = i;
+                break;
+            }
         }
     }
     shelves.forEach(s => enableBookDrag(s));
@@ -524,7 +517,11 @@ function enableStackDrag(){
 let stackDragSrcId = null;
 function stackDragStart(e){
     stackDragSrcId = e.currentTarget.dataset.id;
+    // グローバルIDもセットしてクロスエリア判定可能に
+    dragSrcId = stackDragSrcId;
+    dragSrcType = 'stack';
     e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', stackDragSrcId); } catch(_){}
     e.currentTarget.classList.add('dragging');
 }
 function stackDragOver(e){
@@ -547,6 +544,8 @@ function stackDragDrop(e){
     books = [...tsundoku, ...others];
     localStorage.setItem('books', JSON.stringify(books));
     stackDragSrcId = null;
+    dragSrcId = null;
+    dragSrcType = null;
     document.querySelectorAll('.book-horizontal.dragging').forEach(el=>el.classList.remove('dragging'));
 }
 
@@ -584,10 +583,118 @@ if (searchInput) {
     });
 }
 
-// ツールチップ生成
-function makeTooltip(text){
-    const tip = document.createElement('div');
-    tip.className = 'book-tooltip';
-    tip.textContent = text;
-    return tip;
+// --- 積読⇄読了 エリア間ドラッグ ---
+function setupCrossAreaDrag(){
+    const readAreas = [readShelfEl, readShelf2El, readShelf3El, readShelf4El].filter(Boolean);
+    readAreas.forEach(area=>{
+        area.addEventListener('dragover', e=>{
+            const cid = dragSrcId || stackDragSrcId;
+            if (!cid) return;
+            if (dragSrcType==='stack' || dragSrcType==='read') {
+                e.preventDefault();
+                area.classList.add('drop-target-highlight');
+                computeShelfInsertion(area, e);
+            }
+        });
+        area.addEventListener('dragleave', ()=> area.classList.remove('drop-target-highlight'));
+        area.addEventListener('drop', e=>{
+            area.classList.remove('drop-target-highlight');
+            const cid = dragSrcId || stackDragSrcId;
+            if (!cid) return;
+            e.preventDefault();
+            if (dragSrcType === 'stack') {
+                // 積読→読了
+                const book = books.find(b=>b.id===cid);
+                if (!book) return;
+                book.status = '読了';
+                book.shelfLevel = readAreas.indexOf(area);
+                localStorage.setItem('books', JSON.stringify(books));
+                const origin = stackedBooksEl.querySelector(`[data-id="${cid}"]`);
+                if (origin) origin.remove();
+                const el = createReadElement(book);
+                insertIntoShelfAtComputedPosition(area, el);
+                enableBookDrag(area);
+                saveShelfLevels();
+            } else if (dragSrcType === 'read') {
+                // 読了棚間移動
+                const el = document.querySelector(`.book[data-id="${cid}"]`);
+                if (el) {
+                    insertIntoShelfAtComputedPosition(area, el);
+                    saveShelfLevels();
+                }
+            }
+            dragSrcId = null;
+            stackDragSrcId = null;
+            dragSrcType = null;
+        });
+    });
+    // 読了→積読
+    stackedBooksEl.addEventListener('dragover', e=>{
+        const cid = dragSrcId || stackDragSrcId;
+        if (cid && dragSrcType==='read') {
+            e.preventDefault();
+            stackedBooksEl.classList.add('drop-target-highlight');
+        }
+    });
+    stackedBooksEl.addEventListener('dragleave', ()=> stackedBooksEl.classList.remove('drop-target-highlight'));
+    stackedBooksEl.addEventListener('drop', e=>{
+        stackedBooksEl.classList.remove('drop-target-highlight');
+        const cid = dragSrcId || stackDragSrcId;
+        if (!cid || dragSrcType!=='read') return;
+        e.preventDefault();
+        const book = books.find(b=>b.id===cid);
+        if (!book) return;
+        book.status = '積読';
+        delete book.shelfLevel;
+        localStorage.setItem('books', JSON.stringify(books));
+        const el = document.querySelector(`.book[data-id="${cid}"]`);
+        if (el) el.remove();
+        const newEl = createTsundokuElement(book, false);
+        stackedBooksEl.insertBefore(newEl, stackedBooksEl.firstChild || null);
+        enableStackDrag();
+        saveShelfLevels();
+        dragSrcId = null;
+        stackDragSrcId = null;
+        dragSrcType = null;
+    });
+}
+
+function toggleBookStatus(){ /* legacy no-op */ }
+
+// 保存: 読了棚順と棚レベル
+function saveShelfLevels(){
+    const shelves = [readShelfEl, readShelf2El, readShelf3El, readShelf4El].filter(Boolean);
+    shelves.forEach((s, idx)=>{
+        [...s.querySelectorAll('.book')].forEach(el=>{
+            const b = books.find(x=>x.id===el.dataset.id);
+            if (b) b.shelfLevel = idx;
+        });
+    });
+    const orderedIds = [...document.querySelectorAll('#readShelf .book, #readShelf2 .book, #readShelf3 .book, #readShelf4 .book')].map(el=>el.dataset.id);
+    const readBooks = books.filter(b=>b.status==='読了');
+    const others = books.filter(b=>b.status!=='読了');
+    readBooks.sort((a,b)=> orderedIds.indexOf(a.id) - orderedIds.indexOf(b.id));
+    books = [...others, ...readBooks];
+    localStorage.setItem('books', JSON.stringify(books));
+}
+
+// 棚内挿入位置計算
+const shelfInsertionState = new WeakMap();
+function computeShelfInsertion(shelf, e){
+    const children = [...shelf.querySelectorAll('.book')];
+    const x = e.clientX;
+    let beforeEl = null;
+    for (const child of children){
+        const rect = child.getBoundingClientRect();
+        if (x < rect.left + rect.width/2){ beforeEl = child; break; }
+    }
+    shelfInsertionState.set(shelf, { beforeId: beforeEl ? beforeEl.dataset.id : null });
+}
+function insertIntoShelfAtComputedPosition(shelf, el){
+    const info = shelfInsertionState.get(shelf);
+    if (info && info.beforeId){
+        const ref = shelf.querySelector(`.book[data-id="${info.beforeId}"]`);
+        if (ref){ shelf.insertBefore(el, ref); return; }
+    }
+    shelf.appendChild(el);
 }
