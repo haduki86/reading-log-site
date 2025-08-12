@@ -8,6 +8,18 @@ body {
         padding: 20px;
     }
 
+    /* 検索バー拡大＆見やすさ */
+    #searchTsundoku {
+        font-size: 16px;
+        padding: 10px 14px;
+        border: 2px solid #555;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.08) inset;
+        background:#fffffa;
+        transition: box-shadow .2s, border-color .2s;
+    }
+    #searchTsundoku:focus { outline: none; border-color:#222; box-shadow:0 0 0 3px rgba(255,200,60,0.35); }
+
     :root {
         /* 本棚の最大横幅（調整しやすいよう変数化） */
         --shelf-max-width: 1000px; /* 旧 700px */
@@ -60,6 +72,55 @@ body {
     .book:hover {
         transform: scale(1.1);
     }
+
+    /* ホバー時のふわっとツールチップ */
+    .book-tooltip {
+        position: absolute;
+        left: 50%;
+        top: -10px;
+        transform: translate(-50%, -100%) scale(.92);
+        background: rgba(255,255,240,0.98);
+        color: #222;
+        border: 1px solid #444;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 12px;
+        line-height: 1.2;
+        max-width: 160px;
+        box-shadow: 0 4px 10px -2px rgba(0,0,0,.25);
+        pointer-events: none;
+        opacity: 0;
+        white-space: normal;
+        text-align: center;
+        transition: opacity .25s ease, transform .25s ease;
+        z-index: 20;
+    }
+    .book:hover .book-tooltip,
+    .book-horizontal:hover .book-tooltip {
+        opacity: 1;
+        transform: translate(-50%, -100%) scale(1);
+    }
+    .book-horizontal { position: relative; }
+
+    /* 読了移動アニメーション */
+    .fly-to-shelf {
+        animation: flyShelf .55s cubic-bezier(.55,.08,.4,1.1) forwards;
+        z-index: 50;
+    }
+    @keyframes flyShelf {
+        0%   { transform: translate(var(--from-x,0), var(--from-y,0)) scale(.9) rotate(-3deg); opacity:1; }
+        70%  { transform: translate(0,0) scale(1.08) rotate(1deg); }
+        100% { transform: translate(0,0) scale(1) rotate(0); opacity:1; }
+    }
+
+    /* 積読ドラッグ中 */
+    .dragging { opacity: .45; filter: contrast(.8) saturate(.8); }
+
+    /* 検索一致ハイライト (任意) */
+    .search-hit { outline: 2px solid #ffcb4d; outline-offset: 1px; }
+
+    /* 非表示フィルタ */
+    .filtered-out { display: none !important; }
 
     .chair {
         position: absolute;

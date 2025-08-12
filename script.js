@@ -112,6 +112,8 @@ function createTsundokuElement(book, animate = true, delay = 0) {
     span.textContent = truncateTitle(book.title, 18);
     adjustFontSize(span, bookEl, false);
     bookEl.appendChild(span);
+    // ツールチップ
+    bookEl.appendChild(makeTooltip(book.title));
     if (animate) {
         bookEl.style.animationDelay = `${delay}s`;
     } else {
@@ -139,6 +141,7 @@ function createReadElement(book) {
     span.textContent = truncateTitle(book.title, Math.floor(book.shelfHeight / 12));
     adjustFontSize(span, bookEl, true);
     bookEl.appendChild(span);
+    bookEl.appendChild(makeTooltip(book.title));
     bookEl.addEventListener("click", () => openModal(book.id));
     return bookEl;
 }
@@ -182,6 +185,7 @@ function addSingleTsundoku(book) {
 function moveToRead(book) {
     const target = stackedBooksEl.querySelector(`[data-id="${book.id}"]`);
     if (target) target.remove();
+    // 遅延なし即時配置（アニメーション省略）
     placeReadBook(book);
 }
 
@@ -323,6 +327,7 @@ function enableBookDrag(container){
         el.addEventListener('dragstart', onDragStart);
         el.addEventListener('dragover', onDragOver);
         el.addEventListener('drop', onDrop);
+    el.addEventListener('dragend', onDragEnd);
         el.dataset.dragBound = '1';
     });
     container.addEventListener('dragover', e => e.preventDefault());
@@ -331,6 +336,7 @@ let dragSrcId = null;
 function onDragStart(e){
     dragSrcId = e.currentTarget.dataset.id;
     e.dataTransfer.effectAllowed = 'move';
+    e.currentTarget.classList.add('dragging');
 }
 function onDragOver(e){
     e.preventDefault();
@@ -345,12 +351,20 @@ function onDragOver(e){
 function onDrop(e){
     e.preventDefault();
     if (!dragSrcId) return;
-    const orderedIds = [...readShelfEl.querySelectorAll('.book')].map(el=>el.dataset.id);
+    // 複数棚対応: 全棚内の book 要素順序を連結
+    const orderedIds = [...document.querySelectorAll('#readShelf .book, #readShelf2 .book, #readShelf3 .book')].map(el=>el.dataset.id);
     const readBooks = books.filter(b=>b.status==='読了');
-    const other = books.filter(b=>b.status!=='読了');
+    const others = books.filter(b=>b.status!=='読了');
     readBooks.sort((a,b)=> orderedIds.indexOf(a.id) - orderedIds.indexOf(b.id));
-    books = [...other, ...readBooks];
+    books = [...others, ...readBooks];
     localStorage.setItem('books', JSON.stringify(books));
+    dragSrcId = null;
+    document.querySelectorAll('.dragging').forEach(el=>el.classList.remove('dragging'));
+}
+
+function onDragEnd(){
+    // ドロップされなかった場合でも透過解除
+    document.querySelectorAll('.dragging').forEach(el=>el.classList.remove('dragging'));
     dragSrcId = null;
 }
 
@@ -492,4 +506,88 @@ if (insertDateBtn) {
         modalMemo.focus();
         debounceSaveMemo();
     });
+}
+
+// --- 積読スタックのドラッグ並び替え（縦方向） ---
+function enableStackDrag(){
+    [...stackedBooksEl.querySelectorAll('.book-horizontal')].forEach(el=>{
+        el.draggable = true;
+        if (el.dataset.stackDragBound) return;
+        el.addEventListener('dragstart', stackDragStart);
+        el.addEventListener('dragover', stackDragOver);
+        el.addEventListener('drop', stackDragDrop);
+        el.addEventListener('dragend', ()=> el.classList.remove('dragging'));
+        el.dataset.stackDragBound = '1';
+    });
+    stackedBooksEl.addEventListener('dragover', e=>e.preventDefault());
+}
+let stackDragSrcId = null;
+function stackDragStart(e){
+    stackDragSrcId = e.currentTarget.dataset.id;
+    e.dataTransfer.effectAllowed = 'move';
+    e.currentTarget.classList.add('dragging');
+}
+function stackDragOver(e){
+    e.preventDefault();
+    const target = e.currentTarget;
+    if (!stackDragSrcId || stackDragSrcId === target.dataset.id) return;
+    const rect = target.getBoundingClientRect();
+    const before = (e.clientY - rect.top) < rect.height/2;
+    const srcEl = stackedBooksEl.querySelector(`.book-horizontal[data-id="${stackDragSrcId}"]`);
+    if (!srcEl) return;
+    if (before) target.parentNode.insertBefore(srcEl, target); else target.parentNode.insertBefore(srcEl, target.nextSibling);
+}
+function stackDragDrop(e){
+    e.preventDefault();
+    if (!stackDragSrcId) return;
+    const orderedIds = [...stackedBooksEl.querySelectorAll('.book-horizontal')].map(el=>el.dataset.id);
+    const tsundoku = books.filter(b=>b.status==='積読');
+    const others = books.filter(b=>b.status!=='積読');
+    tsundoku.sort((a,b)=> orderedIds.indexOf(a.id) - orderedIds.indexOf(b.id));
+    books = [...tsundoku, ...others];
+    localStorage.setItem('books', JSON.stringify(books));
+    stackDragSrcId = null;
+    document.querySelectorAll('.book-horizontal.dragging').forEach(el=>el.classList.remove('dragging'));
+}
+
+// 初期化後に積読ドラッグ有効化
+setTimeout(enableStackDrag, 50);
+
+// 単体追加時も付与
+const _origAddSingleTsundoku = addSingleTsundoku;
+addSingleTsundoku = function(book){
+    _origAddSingleTsundoku(book);
+    enableStackDrag();
+};
+
+// --- 検索フィルタ ---
+const searchInput = document.getElementById('searchTsundoku');
+if (searchInput) {
+    searchInput.addEventListener('input', ()=>{
+        const q = searchInput.value.trim().toLowerCase();
+        const all = [
+            ...document.querySelectorAll('.book-horizontal'),
+            ...document.querySelectorAll('.book')
+        ];
+        all.forEach(el=>{
+            const title = (el.getAttribute('title')||'').toLowerCase();
+            if (!q) {
+                el.classList.remove('filtered-out','search-hit');
+            } else if (title.includes(q)) {
+                el.classList.remove('filtered-out');
+                el.classList.add('search-hit');
+            } else {
+                el.classList.add('filtered-out');
+                el.classList.remove('search-hit');
+            }
+        });
+    });
+}
+
+// ツールチップ生成
+function makeTooltip(text){
+    const tip = document.createElement('div');
+    tip.className = 'book-tooltip';
+    tip.textContent = text;
+    return tip;
 }
