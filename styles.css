@@ -16,7 +16,7 @@ body {
         position: relative;
         display: flex;
         flex-direction: column;
-        justify-content: space-between;
+        justify-content: flex-start;
         background-image: repeating-linear-gradient(
             to bottom,
             transparent 0,
@@ -28,7 +28,7 @@ body {
     .shelf {
         display: flex;
         align-items: flex-end;
-        padding: 5px 3px;
+        padding: 4px 3px;
         height: 120px;
         overflow-x: auto;
     }
