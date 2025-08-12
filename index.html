@@ -26,13 +26,18 @@
 <div class="modal" id="modal">
     <div class="modal-content">
         <span class="close-btn" id="closeModal">&times;</span>
-        <h2 id="modalTitle"></h2>
-    <label style="display:block;font-size:12px;margin-top:4px;">感想</label>
-    <textarea id="modalMemo" placeholder="感想を記録..." style="width:100%;height:100px;"></textarea>
+    <h2 id="modalTitle"><span id="modalTitleText"></span></h2>
+    <div class="memo-header">
+        <label class="memo-label">感想</label>
+        <div class="memo-tools">
+            <button type="button" id="insertDateBtn" class="mini-btn" title="日付を挿入">🕒 日付</button>
+        </div>
+    </div>
+    <textarea id="modalMemo" placeholder="感想を記録..." class="memo-area"></textarea>
     <label style="display:block;font-size:12px;margin-top:8px;">表紙色</label>
     <div id="coverColorChoices" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
-            <button id="markRead">読了</button>
+            <button id="markRead">✅ 読了</button>
             <button id="deleteBook" style="background:#fdd;">削除</button>
         </div>
     </div>

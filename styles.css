@@ -8,29 +8,41 @@ body {
         padding: 20px;
     }
 
+    :root {
+        /* 本棚の最大横幅（調整しやすいよう変数化） */
+        --shelf-max-width: 1000px; /* 旧 700px */
+    }
+
     .bookshelf {
-        width: 700px;
-        height: 600px;
+        /* 幅を 100% にしつつ最大 700px に制限 */
+        width: 100%;
+    max-width: var(--shelf-max-width);
+        /* 高さを内容に応じて可変 (従来 600px)。絶対配置要素用に下余白を確保 */
+        height: auto;
+        padding-bottom: 72px; /* chair / stacked-books が食い込まないよう余白 */
         background: #fff;
         border: 4px solid #555;
         position: relative;
         display: flex;
         flex-direction: column;
         justify-content: flex-start;
+        /* 棚ラインも拡大: 124->158 / 127->162 */
         background-image: repeating-linear-gradient(
             to bottom,
             transparent 0,
-            transparent 124px,
-            #555 127px
+            transparent 158px,
+            #555 162px
         );
+        box-sizing: border-box;
     }
 
     .shelf {
         display: flex;
         align-items: flex-end;
-        padding: 4px 3px;
-        height: 120px;
+        padding: 1.5px 4px;
+        height: 158px; /* 122 -> 158 */
         overflow-x: auto;
+        gap: 2px;
     }
 
     .book {
@@ -51,20 +63,20 @@ body {
 
     .chair {
         position: absolute;
-        bottom: -32px;
-        left: -50px;
+        bottom: -40px;
+        left: -60px;
         transform: none;
-        width: 300px;
-        height: 18px;
-        border: 2px solid #555;
+        width: 380px;
+        height: 24px;
+        border: 3px solid #555;
         background: #fff;
     }
 
     /* 変更後: 積読スタック（上から下へ） */
     .stacked-books {
         position: absolute;
-        bottom: -10px;
-        left: 25px;
+        bottom: -14px;
+        left: 34px;
         transform: none;
         display: flex;
         flex-direction: column; /* 上から下へ積む */
@@ -74,11 +86,11 @@ body {
     .book-horizontal {
         /* 追加: 横ずらし用に relative 指定 */
         position: relative;
-        margin: 1px 0;
+    margin: 2px 0;
     background: var(--book-bg, linear-gradient(90deg,#ffffff 0%,#f4f4f4 55%,#e7e7e7 100%));
     border: 1px solid var(--book-border, #555);
         cursor: pointer;
-        transform: translateY(-40px);
+    transform: translateY(-52px);
         opacity: 0;
         animation: stackDown 0.4s forwards;
     border-radius: 3px; /* 積読の丸み縮小 */
@@ -110,10 +122,49 @@ body {
 
     .modal-content {
         background: #fffdf5;
-        padding: 20px;
+        padding: clamp(16px, 4vw, 28px);
         border-radius: 8px;
-        width: 300px;
+        width: clamp(280px, 80vw, 420px);
         box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        box-sizing: border-box;
+    }
+    #modalTitle {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: clamp(18px, 2.2vw, 26px);
+        margin: 0 0 6px;
+        line-height: 1.2;
+    }
+    .memo-header {
+        display:flex;
+        align-items:center;
+        justify-content: space-between;
+        margin-top:4px;
+    }
+    .memo-label { font-size:12px; font-weight:600; }
+    .memo-tools { display:flex; gap:6px; }
+    .mini-btn {
+        font-size: 11px;
+        padding: 4px 8px;
+        border: 1px solid #888;
+        background: #f2f2f2;
+        border-radius: 4px;
+        cursor: pointer;
+        line-height:1.1;
+    }
+    .mini-btn:hover { background:#e6e6e6; }
+    .memo-area {
+        width:100%;
+        height:140px;
+        resize: vertical;
+        font-family: inherit;
+        box-sizing:border-box;
+        margin-top:4px;
+        padding:8px;
+        border:1px solid #bbb;
+        border-radius:6px;
+        background:#fff;
     }
 
     .close-btn {
@@ -123,15 +174,34 @@ body {
     }
 
     form {
-        margin: 15px 0;
+        margin: clamp(8px, 2vw, 18px) 0;
         display: flex;
-        gap: 5px;
+        gap: clamp(4px, 1.2vw, 10px);
+        flex-wrap: wrap;
     }
     form input {
-        padding: 5px;
+        padding: clamp(6px, 1.2vw, 10px);
+        flex: 1 1 200px;
+        min-width: 0;
+        box-sizing: border-box;
     }
     form button {
-        padding: 5px 10px;
+        padding: clamp(6px, 1.2vw, 10px) clamp(14px, 2.4vw, 20px);
+        flex: 0 0 auto;
+    }
+
+    /* 画面幅が狭い時の追加調整 */
+    @media (max-width: 620px) {
+        body { padding: clamp(8px, 4vw, 24px); }
+        .shelf { height: 134px; padding: 4px 2px; }
+        .bookshelf { border-width: 3px; }
+        .chair { left: -20px; transform: scale(.85); }
+        .stacked-books { left: 18px; }
+    }
+
+    @media (max-width: 420px) {
+        .shelf { height: 122px; }
+        .chair { display: none; }
     }
 
     /* 色スウォッチ */
@@ -165,7 +235,7 @@ body {
         font-family: "Noto Serif JP", serif;
         font-weight: 600;
     color: var(--spine-color, #222);
-    -webkit-text-stroke: 0.5px rgba(255,255,255,0.6);
+    -webkit-text-stroke: 0.1px rgba(255,255,255,0.6);
     text-shadow: 0 1px 1px rgba(0,0,0,0.25);
         overflow: hidden;
         text-overflow: ellipsis;

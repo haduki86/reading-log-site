@@ -8,9 +8,11 @@ const bookForm = document.getElementById("bookForm");
 
 const modal = document.getElementById("modal");
 const modalTitle = document.getElementById("modalTitle");
+const modalTitleText = document.getElementById("modalTitleText");
 const modalMemo = document.getElementById("modalMemo");
 const markReadBtn = document.getElementById("markRead");
 const deleteBookBtn = document.getElementById("deleteBook");
+const insertDateBtn = document.getElementById('insertDateBtn');
 
 let currentBookId = null;
 let memoSaveTimer = null;
@@ -34,11 +36,17 @@ const BOOK_COLOR_PALETTE = [
     '#d9d9d9', // グレー
     '#ffffff'  // 白
 ];
-// 読了本サイズの新しい推奨範囲
-const READ_WIDTH_MIN = 14;
-const READ_WIDTH_MAX = 20;
-const READ_HEIGHT_MIN = 115;
-const READ_HEIGHT_MAX = 140;
+// 読了本サイズの推奨範囲 (拡大後)
+const READ_WIDTH_MIN = 18;   // 旧 14
+const READ_WIDTH_MAX = 26;   // 旧 20
+const READ_HEIGHT_MIN = 150; // 旧 115
+const READ_HEIGHT_MAX = 182; // 旧 140
+// 積読（横置き）用サイズ範囲 (拡大)
+const STACK_WIDTH_MIN = 182;   // 旧 140
+const STACK_WIDTH_MAX = 220;   // 旧 170
+const STACK_THICK_MIN = 23;    // 旧 18
+const STACK_THICK_MAX = 34;    // 旧 26
+const SIZE_SCALE_FLAG = 'scaled_v2_130'; // ローカルストレージ用フラグ
 // 仕切り機能削除
 
 function debounceSaveMemo() {
@@ -62,8 +70,8 @@ function ensureSizes(book) {
     // サイズ拡大（既存は保持・無ければ新しい範囲）
     if (book.shelfWidth == null) { book.shelfWidth = randInt(READ_WIDTH_MIN, READ_WIDTH_MAX); updated = true; }
     if (book.shelfHeight == null) { book.shelfHeight = randInt(READ_HEIGHT_MIN, READ_HEIGHT_MAX); updated = true; }
-    if (book.stackWidth == null) { book.stackWidth = randInt(140,170); updated = true; }
-    if (book.stackThickness == null) { book.stackThickness = randInt(18,26); updated = true; }
+    if (book.stackWidth == null) { book.stackWidth = randInt(STACK_WIDTH_MIN, STACK_WIDTH_MAX); updated = true; }
+    if (book.stackThickness == null) { book.stackThickness = randInt(STACK_THICK_MIN, STACK_THICK_MAX); updated = true; }
     if (book.stackOffset == null) { book.stackOffset = randInt(-4,4); updated = true; } //横ずれ
     if (book.color == null) { book.color = "#ffffff"; updated = true; }
     return updated;
@@ -73,15 +81,18 @@ function ensureSizes(book) {
 (function migrateSizes(){
     let changed = false;
     books.forEach(b => { if (ensureSizes(b)) changed = true; });
-    // 既存の読了本が大きすぎる場合に縮小
-    books.forEach(b => {
-        if (b.status === '読了') {
-            let resized = false;
-            if (b.shelfWidth > READ_WIDTH_MAX || b.shelfWidth < READ_WIDTH_MIN) { b.shelfWidth = randInt(READ_WIDTH_MIN, READ_WIDTH_MAX); resized = true; }
-            if (b.shelfHeight > READ_HEIGHT_MAX || b.shelfHeight < READ_HEIGHT_MIN) { b.shelfHeight = randInt(READ_HEIGHT_MIN, READ_HEIGHT_MAX); resized = true; }
-            if (resized) changed = true;
-        }
-    });
+    // 既存サイズを一括スケール（未実行時のみ）
+    if (!localStorage.getItem(SIZE_SCALE_FLAG)) {
+        books.forEach(b => {
+            // 旧サイズ領域を想定して 1.3 倍、範囲へクランプ
+            if (b.shelfWidth)  b.shelfWidth  = Math.max(READ_WIDTH_MIN, Math.min(READ_WIDTH_MAX, Math.round(b.shelfWidth * 1.3)));
+            if (b.shelfHeight) b.shelfHeight = Math.max(READ_HEIGHT_MIN, Math.min(READ_HEIGHT_MAX, Math.round(b.shelfHeight * 1.3)));
+            if (b.stackWidth)  b.stackWidth  = Math.max(STACK_WIDTH_MIN, Math.min(STACK_WIDTH_MAX, Math.round(b.stackWidth * 1.3)));
+            if (b.stackThickness) b.stackThickness = Math.max(STACK_THICK_MIN, Math.min(STACK_THICK_MAX, Math.round(b.stackThickness * 1.3)));
+            changed = true;
+        });
+        localStorage.setItem(SIZE_SCALE_FLAG, '1');
+    }
     if (changed) localStorage.setItem("books", JSON.stringify(books));
 })();
 
@@ -190,7 +201,7 @@ function openModal(id) {
     const book = books.find(b => b.id === id);
     if (!book) return;
     currentBookId = id;
-    modalTitle.textContent = book.title;
+    if (modalTitleText) modalTitleText.textContent = book.title;
     modalMemo.value = book.memo || "";
     // パレット反映
     const paletteContainer = document.getElementById('coverColorChoices');
@@ -353,13 +364,14 @@ function applyColor(el, book) {
     el.style.setProperty('--book-border', border);
     // 明度で文字色変える
     const luminance = getLuminance(c);
-    el.style.setProperty('--spine-color', luminance < 0.5 ? '#f8f8f8' : '#222');
+    el.style.setProperty('--spine-color', luminance < 0.45 ? '#f8f8f8' : '#222');
 }
 
 // フォントサイズ調整
 function adjustFontSize(span, bookEl, vertical) {
     const maxIterations = 6;
-    let size = vertical ? 12 : 11;
+    // 初期フォントサイズ拡大
+    let size = vertical ? 22 : 23;
     span.style.setProperty('--spine-font-size', size + 'px');
     for (let i=0;i<maxIterations;i++) {
         if (vertical) {
@@ -449,4 +461,35 @@ function placeReadBook(book){
         }
     }
     shelves.forEach(s => enableBookDrag(s));
+}
+
+// 日付挿入ボタン
+if (insertDateBtn) {
+    insertDateBtn.addEventListener('click', ()=>{
+        const now = new Date();
+        const pad = n=> String(n).padStart(2,'0');
+        const stamp = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+        const cursorPos = modalMemo.selectionStart ?? modalMemo.value.length;
+        const before = modalMemo.value.slice(0, cursorPos);
+        const after = modalMemo.value.slice(cursorPos);
+        // 直前の 2 行までを見て既に同じ日付行がある時はそのまま末尾へ追記しない
+        const lastChunk = before.split(/\n/).slice(-1)[0];
+        // 直前が空でなければ改行、連続押下時は直前が日付行なら 1 改行、それ以外なら 2 改行で区切る
+        let neededBreaks = '';
+        if (before.length === 0) {
+            neededBreaks = '';
+        } else if (/^\s*$/.test(lastChunk)) {
+            neededBreaks = '';
+        } else if (/^\[[0-9]{4}-[0-9]{2}-[0-9]{2}\]/.test(lastChunk)) {
+            neededBreaks = '\n';
+        } else {
+            neededBreaks = '\n\n';
+        }
+        const insertion = `${neededBreaks}[${stamp}] `;
+        modalMemo.value = before + insertion + after;
+        const newPos = (before + insertion).length;
+        modalMemo.selectionStart = modalMemo.selectionEnd = newPos;
+        modalMemo.focus();
+        debounceSaveMemo();
+    });
 }
