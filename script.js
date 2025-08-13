@@ -161,7 +161,8 @@ function initialRender() {
 
 bookForm.addEventListener("submit", e => {
     e.preventDefault();
-    const title = document.getElementById("title").value.trim();
+    const titleInput = document.getElementById("title");
+    const title = titleInput.value.trim();
     if (!title) return;
     const newBook = {
         id: `${Date.now()}-${Math.random().toString(36).substr(2,9)}`,
@@ -174,6 +175,8 @@ bookForm.addEventListener("submit", e => {
     localStorage.setItem("books", JSON.stringify(books));
     addSingleTsundoku(newBook);
     bookForm.reset();
+    // フォーカスを戻して連続追加しやすく
+    titleInput.focus();
 });
 
 function addSingleTsundoku(book) {
@@ -230,22 +233,7 @@ function closeModalFunc() {
     modal.style.display = "none";
 }
 
-bookForm.addEventListener("submit", e => {
-    e.preventDefault();
-    const title = document.getElementById("title").value.trim();
-    if (!title) return;
-
-    const newBook = {
-        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        title,
-        memo: "",
-        status: "積読"
-    };
-    books.push(newBook);
-    localStorage.setItem("books", JSON.stringify(books));
-    addSingleTsundoku(newBook); // 全再描画しない
-    bookForm.reset();
-});
+// 重複していた submit リスナーを統一（上記）
 
 // 読了ボタン削除
 

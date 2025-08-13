@@ -5,20 +5,19 @@ body {
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding: 20px;
+        padding: 0px;
     }
 
     /* 検索バー拡大＆見やすさ */
     #searchTsundoku {
         font-size: 16px;
-        padding: 10px 14px;
+        padding: 9px 40px;
         border: 2px solid #555;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.08) inset;
+        border-radius: 9px;
         background:#fffffa;
-        transition: box-shadow .2s, border-color .2s;
+        transition: border-color .2s;
     }
-    #searchTsundoku:focus { outline: none; border-color:#222; box-shadow:0 0 0 3px rgba(255,200,60,0.35); }
+    #searchTsundoku:focus { outline:2px solid rgba(255,180,40,0.55); outline-offset:2px; border-color:#222; }
 
     :root {
         /* 本棚の最大横幅（調整しやすいよう変数化） */
@@ -26,26 +25,25 @@ body {
     }
 
     .bookshelf {
-        /* 幅を 100% にしつつ最大 700px に制限 */
         width: 100%;
-    max-width: var(--shelf-max-width);
-        /* 高さを内容に応じて可変 (従来 600px)。絶対配置要素用に下余白を確保 */
+	max-width: var(--shelf-max-width);
         height: auto;
-        padding-bottom: 72px; /* chair / stacked-books が食い込まないよう余白 */
+        padding-bottom: 72px;
         background: #fff;
-        border: 4px solid #555;
+        /* 枠色を柔らかく (#555 -> rgba で薄く) */
+        border: 5px solid #777;
         position: relative;
         display: flex;
         flex-direction: column;
         justify-content: flex-start;
-        /* 棚ラインも拡大: 124->158 / 127->162 */
         background-image: repeating-linear-gradient(
             to bottom,
             transparent 0,
             transparent 158px,
-            #555 162px
+            rgba(110,110,110,0.55) 162px
         );
         box-sizing: border-box;
+        transition: border-color .3s;
     }
 
     .shelf {
@@ -66,7 +64,7 @@ body {
         transition: transform 0.2s;
     border-radius: 2px; /* 丸みを控えめに */
         position: relative;
-    box-shadow: inset 3px 0 4px -2px rgba(0,0,0,0.15), inset -2px 0 3px -2px rgba(255,255,255,0.6);
+    /* 影除去 */
     }
 
     .book:hover {
@@ -93,11 +91,24 @@ body {
     /* 積読ドラッグ中 */
     .dragging { opacity: .45; filter: contrast(.8) saturate(.8); }
 
-    /* 検索一致ハイライト (任意) */
-    .search-hit { outline: 2px solid #ffcb4d; outline-offset: 1px; }
+    /* 検索一致ハイライト: 浮き上がり + 影 */
+    .search-hit {
+        transform: scale(1.05);
+        z-index: 5;
+        box-shadow: 0 0 0 3px rgba(255,190,60,0.55), 0 4px 10px -2px rgba(0,0,0,0.35);
+        transition: transform .18s, box-shadow .25s;
+    }
+    .book.search-hit:hover { transform: scale(1.15); }
+    .book-horizontal.search-hit:hover { transform: scale(1.12); }
+    .book.search-hit { transform-origin: center bottom; }
+    .book-horizontal.search-hit { transform-origin: center; }
 
-    /* 非表示フィルタ */
-    .filtered-out { display: none !important; }
+    /* 非一致本: 半透明化（表示は維持） */
+    .filtered-out {
+        opacity: .4;
+        filter: saturate(.65) contrast(.9);
+        transition: opacity .25s, filter .25s;
+    }
 
     .chair {
         position: absolute;
@@ -132,7 +143,7 @@ body {
         opacity: 0;
         animation: stackDown 0.4s forwards;
     border-radius: 3px; /* 積読の丸み縮小 */
-    box-shadow: inset 0 2px 3px -2px rgba(0,0,0,0.18), inset 0 -2px 3px -2px rgba(255,255,255,0.6);
+    /* 影除去 */
     }
 
     .stacked-books {
@@ -163,8 +174,8 @@ body {
         padding: clamp(16px, 4vw, 28px);
         border-radius: 8px;
         width: clamp(280px, 80vw, 420px);
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         box-sizing: border-box;
+        position: relative; /* 右上配置用 */
     }
     #modalTitle {
         display: flex;
@@ -206,22 +217,82 @@ body {
     }
 
     .close-btn {
-        float: right;
         cursor: pointer;
-        font-size: 18px;
+        font-size: 26px;
+        line-height: 1;
+        color: #666;
+        padding: 4px 8px;
+        border-radius: 6px;
+        transition: background .2s, color .2s, transform .15s;
+        user-select: none;
+        position: absolute;
+        top: 6px;
+        right: 6px;
+    }
+    .close-btn:hover { background:#ececec; color:#333; }
+    .close-btn:active { transform: scale(.9); }
+    .close-btn:focus { outline:2px solid #888; outline-offset:2px; }
+
+    .modal-hint {
+        font-size: 11px;
+        color: #777;
+        margin: -4px 0 8px;
+        text-align: right;
+        letter-spacing:.3px;
     }
 
     form {
         margin: clamp(8px, 2vw, 18px) 0;
         display: flex;
-        gap: clamp(4px, 1.2vw, 10px);
-        flex-wrap: wrap;
+        gap: 10px; /* 追加: 指定の8px間隔 */
+    flex-wrap: nowrap; /* 一列配置 */
+    align-items: flex-start; /* 上側に詰める */
     }
     form input {
-        padding: clamp(6px, 1.2vw, 10px);
+        padding: 10px 30px; /* 検索バーと合わせる */
         flex: 1 1 200px;
         min-width: 0;
         box-sizing: border-box;
+        font-size: 16px;
+        border: 2px solid #555; /* 統一 */
+        border-radius: 8px;
+        background: #fffffa;
+        transition: border-color .2s;
+    }
+    form input:focus { outline:2px solid rgba(255,180,40,0.55); outline-offset:2px; border-color:#222; }
+
+    form button {
+        border-radius: 8px;
+        border: 2px solid #555;
+        background:#fffef6;
+        cursor:pointer;
+        transition: background .2s, transform .15s;
+    }
+    form button:hover { background:#fff6d8; }
+    form button:active { transform: translateY(1px); }
+
+    /* 積読追加ボタン特化スタイル */
+    form button[type="submit"] {
+        background: #ffffff; /* ビビッドオレンジ */
+        border-color: #fdd764;
+        color: #462a00;
+        border-radius: 999px; /* 丸っこく */
+        font-weight: 600;
+        padding: 10px 22px;
+        letter-spacing: .5px;
+        transition: background .18s, transform .15s;
+    }
+    form button[type="submit"]:hover {
+        background: #ffd364; /* 薄黄色 */
+        color:#3a2600;
+    }
+    form button[type="submit"]:active {
+        background: #ffd36a;
+        transform: translateY(1px);
+    }
+    form button[type="submit"]:focus {
+        outline:2px solid rgba(255,200,80,0.65);
+        outline-offset:2px;
     }
     form button {
         padding: clamp(6px, 1.2vw, 10px) clamp(14px, 2.4vw, 20px);
@@ -250,7 +321,6 @@ body {
         border: 1px solid rgba(0,0,0,0.4);
         cursor: pointer;
         position: relative;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.2) inset;
         display:flex;
         align-items:center;
         justify-content:center;
@@ -258,10 +328,10 @@ body {
         color:#fff;
         font-weight:bold;
         user-select:none;
-        transition: transform .15s, box-shadow .15s;
+        transition: transform .15s;
     }
     #coverColorChoices .swatch:hover { transform: scale(1.12); }
-    #coverColorChoices .swatch.selected { outline:2px solid #222; box-shadow:0 0 0 3px rgba(255,255,255,0.9), 0 2px 4px rgba(0,0,0,.3); }
+    #coverColorChoices .swatch.selected { outline:2px solid #222; }
 
     /* 背表紙タイトル */
     .spine-title {

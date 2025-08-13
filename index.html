@@ -10,8 +10,7 @@
 <body>
 
 <form id="bookForm">
-    <input type="text" id="title" placeholder="本のタイトル" required>
-    <button type="submit">積読</button>
+    <input type="text" id="title" placeholder="積読本を追加" aria-label="積読本を追加" required>
 </form>
 
 <!-- タイトル簡易検索（積読フィルタ用） -->
@@ -28,10 +27,10 @@
 
 <div class="modal" id="modal">
     <div class="modal-content">
-        <span class="close-btn" id="closeModal">&times;</span>
+        <span class="close-btn" id="closeModal" aria-label="閉じる" role="button" tabindex="0">&times;</span>
     <h2 id="modalTitle"><span id="modalTitleText"></span></h2>
     <div class="memo-header">
-        <label class="memo-label">感想</label>
+        <label class="memo-label">読書感想</label>
         <div class="memo-tools">
             <button type="button" id="insertDateBtn" class="mini-btn" title="日付を挿入">🕒 日付</button>
         </div>
