@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>読書サイト</title>
+<title>つんどくライブラリー</title>
 <link rel="stylesheet" href="styles.css">
 <script src="script.js" defer></script>
 </head>
@@ -31,9 +31,6 @@
     <h2 id="modalTitle"><span id="modalTitleText"></span></h2>
     <div class="memo-header">
         <label class="memo-label">読書感想</label>
-        <div class="memo-tools">
-            <button type="button" id="insertDateBtn" class="mini-btn" title="日付を挿入">🕒 日付</button>
-        </div>
     </div>
     <textarea id="modalMemo" placeholder="感想を記録..." class="memo-area"></textarea>
     <label style="display:block;font-size:12px;margin-top:8px;">表紙色</label>
@@ -43,5 +40,13 @@
         </div>
     </div>
 </div>
+
+<!-- 効果音オーディオ要素（必要に応じて sounds/*.mp3 を配置） -->
+<audio id="addSound" src="sounds/add.mp3" preload="none"></audio>
+<audio id="finishSound" src="sounds/finish.mp3" preload="none"></audio>
+<audio id="openSound" src="sounds/open.mp3" preload="none"></audio>
+<audio id="deleteSound" src="sounds/delete.mp3" preload="none"></audio>
+<audio id="clickSound" src="sounds/click.mp3" preload="none"></audio>
+<audio id="closeSound" src="sounds/close.mp3" preload="none"></audio>
 </body>
 </html>

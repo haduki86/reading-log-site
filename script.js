@@ -13,7 +13,7 @@ const modalTitleText = document.getElementById("modalTitleText");
 const modalMemo = document.getElementById("modalMemo");
 // 読了ボタン撤去に伴い参照しない
 const deleteBookBtn = document.getElementById("deleteBook");
-const insertDateBtn = document.getElementById('insertDateBtn');
+// 日付挿入ボタン削除済み
 
 let currentBookId = null;
 let memoSaveTimer = null;
@@ -49,6 +49,39 @@ const STACK_THICK_MIN = 23;    // 旧 18
 const STACK_THICK_MAX = 34;    // 旧 26
 const SIZE_SCALE_FLAG = 'scaled_v2_130'; // ローカルストレージ用フラグ
 // 仕切り機能削除
+
+// ================= 効果音 =================
+function playSound(el){
+    if(!el) return;
+    try {
+        el.currentTime = 0;
+        const p = el.play();
+        if (p && typeof p.catch === 'function') p.catch(()=>{});
+    } catch(_){}
+}
+const addSound = document.getElementById('addSound');
+const finishSound = document.getElementById('finishSound');
+const openSound = document.getElementById('openSound');
+const deleteSound = document.getElementById('deleteSound');
+const clickSound = document.getElementById('clickSound');
+const closeSound = document.getElementById('closeSound');
+// 音量調整（必要なら変更）
+if(addSound) addSound.volume = .35;
+if(finishSound) finishSound.volume = .45;
+if(openSound) openSound.volume = .4;
+if(deleteSound) deleteSound.volume = .5;
+if(clickSound) clickSound.volume = .25;
+if(closeSound) closeSound.volume = .35;
+// モバイル再生許可: 最初のユーザ操作で一度だけサイレント再生を試みる
+let audioUnlocked = false;
+function unlockAudio(){
+    if(audioUnlocked) return;
+    audioUnlocked = true;
+    [addSound, finishSound, openSound, deleteSound, clickSound, closeSound].forEach(a=>{ try { a && a.play && a.play().then(()=>{a.pause(); a.currentTime=0;}).catch(()=>{}); } catch(_){} });
+    window.removeEventListener('pointerdown', unlockAudio, { once:true });
+}
+window.addEventListener('pointerdown', unlockAudio, { once:true });
+// ==================================================
 
 function debounceSaveMemo() {
     if (memoSaveTimer) clearTimeout(memoSaveTimer);
@@ -177,6 +210,7 @@ bookForm.addEventListener("submit", e => {
     bookForm.reset();
     // フォーカスを戻して連続追加しやすく
     titleInput.focus();
+    playSound(addSound);
 });
 
 function addSingleTsundoku(book) {
@@ -218,6 +252,7 @@ function openModal(id) {
     }
     highlightSelectedColor(book.color || '#ffffff');
     modal.style.display = "flex";
+    playSound(openSound);
     // 読了ボタン廃止
 }
 
@@ -230,6 +265,7 @@ function closeModalFunc() {
             localStorage.setItem("books", JSON.stringify(books));
         }
     }
+    if (modal.style.display === 'flex') playSound(closeSound);
     modal.style.display = "none";
 }
 
@@ -251,6 +287,7 @@ deleteBookBtn.addEventListener("click", () => {
     books.splice(idx,1);
     localStorage.setItem("books", JSON.stringify(books));
     closeModalFunc();
+    playSound(deleteSound);
 });
 
 // メモの自動保存 (debounce)
@@ -300,7 +337,29 @@ function enableBookDrag(container){
     el.addEventListener('dragend', onDragEnd);
         el.dataset.dragBound = '1';
     });
-    container.addEventListener('dragover', e => e.preventDefault());
+    // コンテナ自体での dragover / drop （末尾や空領域へのドロップ対応）
+    if (!container.dataset.containerDropBound) {
+        container.addEventListener('dragover', e => {
+            if (!dragSrcId) return;
+            e.preventDefault();
+            // 末尾領域判定: 最後の book の右半分以降であれば append
+            const last = container.querySelector('.book:last-child');
+            if (last) {
+                const rect = last.getBoundingClientRect();
+                if (e.clientX > rect.left + rect.width/2) {
+                    const srcEl = document.querySelector(`.book[data-id="${dragSrcId}"]`);
+                    if (srcEl && srcEl !== last.nextSibling) container.appendChild(srcEl);
+                }
+            }
+        });
+        container.addEventListener('drop', e => {
+            if (!dragSrcId) return;
+            e.preventDefault();
+            finalizeShelfOrder();
+            playSound(finishSound); // コンテナ末尾ドロップで音
+        });
+        container.dataset.containerDropBound = '1';
+    }
 }
 let dragSrcId = null;
 let dragSrcType = null; // 'read' | 'stack'
@@ -325,6 +384,20 @@ function onDrop(e){
     e.preventDefault();
     if (!dragSrcId) return;
     // 複数棚対応: 全棚内の book 要素順序を連結
+    const orderedIds = [...document.querySelectorAll('#readShelf .book, #readShelf2 .book, #readShelf3 .book')].map(el=>el.dataset.id);
+    const readBooks = books.filter(b=>b.status==='読了');
+    const others = books.filter(b=>b.status!=='読了');
+    readBooks.sort((a,b)=> orderedIds.indexOf(a.id) - orderedIds.indexOf(b.id));
+    books = [...others, ...readBooks];
+    localStorage.setItem('books', JSON.stringify(books));
+    dragSrcId = null;
+    dragSrcType = null;
+    document.querySelectorAll('.dragging').forEach(el=>el.classList.remove('dragging'));
+    playSound(finishSound); // 棚内並び替え音 -> finishSound に変更
+}
+
+// 棚順序確定 & 永続化共通化
+function finalizeShelfOrder(){
     const orderedIds = [...document.querySelectorAll('#readShelf .book, #readShelf2 .book, #readShelf3 .book')].map(el=>el.dataset.id);
     const readBooks = books.filter(b=>b.status==='読了');
     const others = books.filter(b=>b.status!=='読了');
@@ -359,10 +432,9 @@ function applyColor(el, book) {
 // フォントサイズ調整
 function adjustFontSize(span, bookEl, vertical) {
     const maxIterations = 6;
-    // 初期フォントサイズ拡大
-    let size = vertical ? 22 : 23;
+    let size = vertical ? 22 : 23; // 初期フォントサイズ大きめ
     span.style.setProperty('--spine-font-size', size + 'px');
-    for (let i=0;i<maxIterations;i++) {
+    for (let i = 0; i < maxIterations; i++) {
         if (vertical) {
             if (span.scrollHeight <= bookEl.clientHeight - 4) break;
         } else {
@@ -374,32 +446,32 @@ function adjustFontSize(span, bookEl, vertical) {
     }
 }
 
+
 // HEX -> 相対明度
 function getLuminance(hex) {
-    const {r,g,b} = parseHex(hex);
-    const srgb = [r,g,b].map(v=>{
-        v/=255; return v<=0.03928? v/12.92 : Math.pow((v+0.055)/1.055,2.4);
+    const { r, g, b } = parseHex(hex);
+    const srgb = [r, g, b].map(v => {
+        v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
     });
-    return 0.2126*srgb[0]+0.7152*srgb[1]+0.0722*srgb[2];
+    return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
 }
 
-function shadeColor(hex, percent){
-    const {r,g,b} = parseHex(hex);
-    const t = percent<0?0:255;
-    const p = Math.abs(percent)/100;
-    const nr = Math.round((t - r)*p + r);
-    const ng = Math.round((t - g)*p + g);
-    const nb = Math.round((t - b)*p + b);
+function shadeColor(hex, percent) {
+    const { r, g, b } = parseHex(hex);
+    const t = percent < 0 ? 0 : 255;
+    const p = Math.abs(percent) / 100;
+    const nr = Math.round((t - r) * p + r);
+    const ng = Math.round((t - g) * p + g);
+    const nb = Math.round((t - b) * p + b);
     return `rgb(${nr},${ng},${nb})`;
 }
 
-function parseHex(hex){
-    let h = hex.replace('#','');
-    if (h.length===3) h = h.split('').map(x=>x+x).join('');
-    const num = parseInt(h,16);
-    return {r:(num>>16)&255,g:(num>>8)&255,b:num&255};
+function parseHex(hex) {
+    let h = hex.replace('#', '');
+    if (h.length === 3) h = h.split('').map(x => x + x).join('');
+    const num = parseInt(h, 16);
+    return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
 }
-
 // カラー変更
 document.getElementById('coverColor')?.addEventListener('input', (e)=>{
     // (旧 color input 対応) 何もしない
@@ -458,36 +530,7 @@ function placeReadBook(book){
     shelves.forEach(s => enableBookDrag(s));
 }
 
-// 日付挿入ボタン
-if (insertDateBtn) {
-    insertDateBtn.addEventListener('click', ()=>{
-        const now = new Date();
-        const pad = n=> String(n).padStart(2,'0');
-        const stamp = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
-        const cursorPos = modalMemo.selectionStart ?? modalMemo.value.length;
-        const before = modalMemo.value.slice(0, cursorPos);
-        const after = modalMemo.value.slice(cursorPos);
-        // 直前の 2 行までを見て既に同じ日付行がある時はそのまま末尾へ追記しない
-        const lastChunk = before.split(/\n/).slice(-1)[0];
-        // 直前が空でなければ改行、連続押下時は直前が日付行なら 1 改行、それ以外なら 2 改行で区切る
-        let neededBreaks = '';
-        if (before.length === 0) {
-            neededBreaks = '';
-        } else if (/^\s*$/.test(lastChunk)) {
-            neededBreaks = '';
-        } else if (/^\[[0-9]{4}-[0-9]{2}-[0-9]{2}\]/.test(lastChunk)) {
-            neededBreaks = '\n';
-        } else {
-            neededBreaks = '\n\n';
-        }
-        const insertion = `${neededBreaks}[${stamp}] `;
-        modalMemo.value = before + insertion + after;
-        const newPos = (before + insertion).length;
-        modalMemo.selectionStart = modalMemo.selectionEnd = newPos;
-        modalMemo.focus();
-        debounceSaveMemo();
-    });
-}
+// 日付挿入機能削除済み（以前の insertDateBtn リスナーを除去）
 
 // --- 積読スタックのドラッグ並び替え（縦方向） ---
 function enableStackDrag(){
@@ -535,6 +578,7 @@ function stackDragDrop(e){
     dragSrcId = null;
     dragSrcType = null;
     document.querySelectorAll('.book-horizontal.dragging').forEach(el=>el.classList.remove('dragging'));
+    playSound(clickSound); // 積読内並び替え音
 }
 
 // 初期化後に積読ドラッグ有効化
@@ -603,12 +647,14 @@ function setupCrossAreaDrag(){
                 insertIntoShelfAtComputedPosition(area, el);
                 enableBookDrag(area);
                 saveShelfLevels();
-            } else if (dragSrcType === 'read') {
+                playSound(finishSound);
+        } else if (dragSrcType === 'read') {
                 // 読了棚間移動
                 const el = document.querySelector(`.book[data-id="${cid}"]`);
                 if (el) {
                     insertIntoShelfAtComputedPosition(area, el);
                     saveShelfLevels();
+            playSound(finishSound); // 棚間移動音（finish に統一）
                 }
             }
             dragSrcId = null;
@@ -641,6 +687,7 @@ function setupCrossAreaDrag(){
         stackedBooksEl.insertBefore(newEl, stackedBooksEl.firstChild || null);
         enableStackDrag();
         saveShelfLevels();
+    playSound(addSound); // 戻したときは追加音を再利用
         dragSrcId = null;
         stackDragSrcId = null;
         dragSrcType = null;
