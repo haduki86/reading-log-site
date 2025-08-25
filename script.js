@@ -62,14 +62,12 @@ function playSound(el){
 const addSound = document.getElementById('addSound');
 const finishSound = document.getElementById('finishSound');
 const openSound = document.getElementById('openSound');
-const deleteSound = document.getElementById('deleteSound');
 const clickSound = document.getElementById('clickSound');
 const closeSound = document.getElementById('closeSound');
 // 音量調整（必要なら変更）
 if(addSound) addSound.volume = .35;
 if(finishSound) finishSound.volume = .45;
 if(openSound) openSound.volume = .4;
-if(deleteSound) deleteSound.volume = .5;
 if(clickSound) clickSound.volume = .25;
 if(closeSound) closeSound.volume = .35;
 // モバイル再生許可: 最初のユーザ操作で一度だけサイレント再生を試みる
@@ -77,7 +75,7 @@ let audioUnlocked = false;
 function unlockAudio(){
     if(audioUnlocked) return;
     audioUnlocked = true;
-    [addSound, finishSound, openSound, deleteSound, clickSound, closeSound].forEach(a=>{ try { a && a.play && a.play().then(()=>{a.pause(); a.currentTime=0;}).catch(()=>{}); } catch(_){} });
+    [addSound, finishSound, openSound, clickSound, closeSound].forEach(a=>{ try { a && a.play && a.play().then(()=>{a.pause(); a.currentTime=0;}).catch(()=>{}); } catch(_){} });
     window.removeEventListener('pointerdown', unlockAudio, { once:true });
 }
 window.addEventListener('pointerdown', unlockAudio, { once:true });
@@ -287,7 +285,7 @@ deleteBookBtn.addEventListener("click", () => {
     books.splice(idx,1);
     localStorage.setItem("books", JSON.stringify(books));
     closeModalFunc();
-    playSound(deleteSound);
+    playSound(closeSound); // 削除時は close 音
 });
 
 // メモの自動保存 (debounce)
